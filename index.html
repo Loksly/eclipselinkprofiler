@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html ng-app="elp" lang="en">
+	<head>
+		<meta charset="utf8">
+		<title>Eclipse Link Profiler</title>
+		<meta name="viewport" content="initial-scale=1" />
+		<link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha256-916EbMg70RQy9LHiGkXzG8hSg9EdNy97GazNG/aiY1w=" crossorigin="anonymous" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angular-material/1.1.4/angular-material.min.css" integrity="sha256-chJYrliJ7D4AzhG2wiYVRbYLd6jOEF2NLPB5JdvOKC4=" crossorigin="anonymous" />
+
+		<style>
+			body{font-family: 'Roboto', sans-serif;}
+			.fullheight{ height: 100% }
+			.drop-box { border: dashed thin #78909C; height: 90%; min-height: 50px; width: 90%; margin-left: 5%; margin-top: 10px;text-align: center; padding-top: 15px;}
+			.testimonial-group > .row {
+				overflow-x: auto;
+				white-space: nowrap;
+			}
+			.testimonial-group > .row > .col-md-6 {
+				display: inline-block;
+				float: none;
+			}
+			[ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
+				display: none !important;
+			}
+		</style>
+	</head>
+	<body ng-controller="ProfilerCtrl">
+		<div class="container-fluid testimonial-group">
+			<div class="row">
+				<div ng-hide="content" ngf-drop="dropped($files)" ng-model="files" class="drop-box" >Drop here your eclipse-link profile</div>
+			</div>
+			<div class="row ng-cloak" style="padding-top:2em">
+				<div class="col-md-6" ng-repeat="stat in stats">
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<div class="pull-right form-group-sm">
+								<button class="pull-right btn btn-default btn-xs" ng-click="remove($index)"><span class="glyphicon glyphicon-minus"></span></button>
+								<input type="number" ng-model="limitTo" ng-init="limitTo=5" style="width:5em" class="form-control" />
+							</div>
+							{{stat.META.when}}
+						</div>
+						<table class="table table-bordered table-striped">
+							<tbody>
+								<tr ng-repeat="top in (stat.QUERIES | orderBy:'count':true | limitTo: limitTo)" ng-style="{'background-color': getColor(top.count, stat.META.count)}">
+									<td style="white-space: normal;  font-size:smaller">{{top.sql}}</td>
+									<td class="text-right">{{top.count}}</td>
+								</tr>
+							</tbody>
+						</table>
+						<table class="table table-bordered table-striped">
+							<thead>
+								<th scope="col">Table</th>
+								<th scope="col">Select</th>
+								<th scope="col">Update</th>
+								<th scope="col">Insert</th>
+								<th scope="col">Delete</th>
+								<th scope="col">Total</th>
+							</thead>
+							<tfoot>
+								<th scope="col">Total</th>
+								<th scope="col" class="text-right">{{stat.SELECT.count}}</th>
+								<th scope="col" class="text-right">{{stat.UPDATE.count}}</th>
+								<th scope="col" class="text-right">{{stat.INSERT.count}}</th>
+								<th scope="col" class="text-right">{{stat.DELETE.count}}</th>
+								<th scope="col" class="text-right">{{stat.META.count}}</th>
+							</tfoot>
+							<tbody>
+								<tr ng-repeat="t in stat.META.tables | toArray | important:stat">
+									<th>{{t}}</th>
+									<td scope="col" class="text-right" ng-style="{'background-color': getColor(stat.SELECT.tables[t], stat.SELECT.count)}">{{stat.SELECT.tables[t]}}</th>
+									<td scope="col" class="text-right" ng-style="{'background-color': getColor(stat.UPDATE.tables[t], stat.UPDATE.count)}">{{stat.UPDATE.tables[t]}}</td>
+									<td scope="col" class="text-right" ng-style="{'background-color': getColor(stat.INSERT.tables[t], stat.INSERT.count)}">{{stat.INSERT.tables[t]}}</td>
+									<td scope="col" class="text-right" ng-style="{'background-color': getColor(stat.DELETE.tables[t], stat.DELETE.count)}">{{stat.DELETE.tables[t]}}</td>
+									<td scope="col" class="text-right" ng-style="{'background-color': getColor(stat.META.tables[t], stat.META.count)}">{{stat.META.tables[t]}}</td>
+								</tr>
+							</tbody>
+						</table>
+
+					</div>
+				</div>
+			</div>
+		</div>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js" integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE=" crossorigin="anonymous"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular-animate.min.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular-aria.min.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular-messages.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-nvd3/1.0.9/angular-nvd3.min.js" integrity="sha256-PAY8BCwt+idlG8V+2fyooEUzQ+ENaY9RCe9/Z9xn0nM=" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/danialfarid-angular-file-upload/12.2.13/ng-file-upload-shim.min.js" integrity="sha256-+Iyux2tPjhyAt/TCseYTioAulSBH00a96c+pBzYCSK8=" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/danialfarid-angular-file-upload/12.2.13/ng-file-upload.min.js" integrity="sha256-TqtYHg6/i06jaAnqVU0twQV7dROa7Um8CpqElzK9024=" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/danialfarid-angular-file-upload/12.2.13/FileAPI.min.js" integrity="sha256-Z/kpC+dKsJC5s+puemaoCurRg2iLQvxHMm/9HIhPwMQ=" crossorigin="anonymous"></script>
+		<script src="https://d3js.org/d3.v4.min.js"></script>
+		<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+		
+		<script>
+			'use strict';
+
+			function hashstr(str) {
+				var hashval = 5381, i = str.length;
+
+				while(i) {
+					hashval = (hashval * 33) ^ str.charCodeAt(--i);
+				}
+				return hashval >>> 0;
+			}
+
+			function process(lines){
+
+				const queries = lines.filter(function(line){
+					return line.startsWith('[EL Fine]: sql:');
+				});
+
+				return queries.map(function(query){
+					const parts = query.split("--");
+					const timestr = parts[0].split('sql:')[1].trim();
+					const sql = parts[parts.length - 1];
+					const sqlparts = sql.split(' ').filter(function(s){ return s != ''});
+
+					const tables = [];
+					let insidefrom = false;;
+					for (let i = 0, j = sqlparts.length; i < j; i++){
+						const element = sqlparts[i];
+						if (i > 0){
+							if (sqlparts[i - 1].toUpperCase() === 'FROM' || sqlparts[i - 1].toUpperCase() === 'JOIN' || sqlparts[i - 1].toUpperCase() === 'UPDATE' || sqlparts[i - 1].toUpperCase() === 'INTO'){
+								tables.push(element);
+							} else {
+
+								if (element.toUpperCase() === 'FROM'){
+									insidefrom = true;	
+								}
+								if (element.toUpperCase() === 'WHERE'){
+									insidefrom = false;
+								}
+								if (insidefrom && sqlparts[i - 1].endsWith(',')){
+									tables.push(element);
+								}
+							}
+						}
+					}
+
+					return {
+						type: sqlparts[0].toUpperCase(),
+						sql: sql,
+						tables: tables,
+						when: timestr,
+						line: query
+					};
+				});
+			}
+
+			function getStats(queries){
+				return queries.reduce(function(p, query){
+					if (typeof p[query.type] === 'undefined'){
+						p[query.type] = {
+							'tables': {},
+							'count': 0
+						};
+					}
+					p[query.type].count++;
+					query.tables.forEach(function(table){
+						if (typeof p[query.type].tables[table] === 'undefined'){
+							p[query.type].tables[table] = 0;
+						}
+						if (typeof p.META.tables[table] === 'undefined'){
+							p.META.tables[table] = 0;
+						}
+
+						p[query.type].tables[table]++;
+						p.META.tables[table]++;
+					});
+					p.META.when = query.when;
+					p.META.count++;
+
+					const h = hashstr(query.sql);
+					if (typeof p.QUERIES[h] === 'undefined'){
+						p.QUERIES[h] = {
+							sql: query.sql,
+							count: 1
+						};
+					} else {
+						p.QUERIES[h].count++;
+					}
+
+
+					return p;
+				}, {TOTAL: {}, META: {tables: {}, when: '', count: 0}, QUERIES: {}});
+			}
+
+			angular
+				.module('elp', ['ngAnimate', 'ngFileUpload'])
+				.filter('toArray', function(){
+					return function(o){
+						const a = Object.keys(o);
+						a.sort(function(a, b){ return a.toString().localeCompare(b); });
+						return a;
+					};
+				})
+				.filter('important', function(){
+					return function(a, stat){
+						const r = a.filter(function(tablename){
+							return parseInt(stat.META.tables[tablename]) > 1;
+						});
+
+						return r;
+					};
+				})
+				.controller('ProfilerCtrl', ['$scope', function($scope){
+					$scope.stats = [];
+					$scope.remove = function(i){
+						$scope.stats.splice(i, 1);
+					};
+					$scope.dropped = function(l){
+						console.debug('dropped');
+						if (l.length === 1){
+							console.debug('1 file', l[0].type);
+							if (true || l[0].type.startsWith('text/')){
+
+								console.debug('txt');
+								const reader = new FileReader();
+								reader.onload = function(data){
+
+									let content = data.target.result.toString()
+									content = content.replace(/\r/g, "");
+									content = content.replace(/  /g, " ");
+									const lines = content.split("\n");
+									const numlines = lines.length;
+									const prevlines = $scope.stats.length > 0 ? $scope.stats[$scope.stats.length - 1].numlines : 0;
+									const filteredlines = lines.filter(function(line, i){
+										return i > prevlines;
+									});
+
+									console.debug('filteredlines', filteredlines.length);
+									$scope.processresult = process(filteredlines);
+									let stats = getStats($scope.processresult);
+
+									stats.QUERIES = Object.values(stats.QUERIES);
+									stats.numlines = numlines;
+									stats.META = Object.keys(stats.META)
+										.sort((a, b) => stats.META[a] - stats.META[b])
+										.reduce(function(_sortedObj, key){
+											_sortedObj[key] = stats.META[key];
+											return _sortedObj;
+										}, {});
+									$scope.stats.push(stats);
+									console.debug(stats);
+									$scope.$apply();
+								};
+								reader.readAsText(l[0]);
+							}
+						}
+					};
+
+					$scope.getColor = function(value, max){
+						if (!value || !max){
+							return '';
+						}
+						if (parseInt(max) <= 0){ return ''; }
+
+						return d3.interpolateReds(parseFloat(value) / parseFloat(max));
+					};
+				}]);
+		</script>
+	</body>
+</html>
